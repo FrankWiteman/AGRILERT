@@ -16,6 +16,16 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Fix for 'process is not defined' error on static hosts -->
+    <script>
+      window.process = { 
+        env: { 
+          API_KEY: "" // Will be injected by the environment or requested via UI if needed
+        } 
+      };
+    </script>
+
 <script type="importmap">
 {
   "imports": {
@@ -31,11 +41,14 @@
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-x-hidden">
     <div id="root"></div>
+    
+    <!-- Explicitly load the application entry point -->
+    <script type="module" src="./index.tsx"></script>
+
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Using relative path for GitHub Pages compatibility
-          navigator.serviceWorker.register('sw.js')
+          navigator.serviceWorker.register('./sw.js')
             .then(reg => console.log('Service Worker registered'))
             .catch(err => console.log('Service Worker registration failed', err));
         });
