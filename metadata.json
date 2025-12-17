@@ -1,0 +1,8 @@
+{
+  "name": "AGRILERT - Virtual Farm Experience",
+  "description": "An advanced Agri-tech platform empowering farmers with real-time climate updates via Commercial Microwave Link (CML) data, predictive crop management, and virtual farm simulations.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ]
+}
