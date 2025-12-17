@@ -2,51 +2,62 @@
 import React from 'react';
 
 const EducationCenter: React.FC = () => {
-  const courses = [
-    { id: 1, title: 'Basics of CML Rainfall Data', duration: '45 mins', level: 'Beginner', thumbnail: 'https://picsum.photos/seed/edu1/400/250' },
-    { id: 2, title: 'Climate Smart Rice Cultivation', duration: '1.2 hrs', level: 'Intermediate', thumbnail: 'https://picsum.photos/seed/edu2/400/250' },
-    { id: 3, title: 'Digital Financial Literacy', duration: '30 mins', level: 'All Levels', thumbnail: 'https://picsum.photos/seed/edu3/400/250' },
+  const modules = [
+    { id: 1, title: 'Basics of CML Data', duration: '15m', free: true, progress: 100, icon: 'fa-tower-broadcast' },
+    { id: 2, title: 'Optimal Seed Selection', duration: '45m', free: true, progress: 20, icon: 'fa-seedling' },
+    { id: 3, title: 'Advanced Soil Chemistry', duration: '2h', free: false, progress: 0, icon: 'fa-flask' },
+    { id: 4, title: 'Bio-tech Farming V3', duration: '4h', free: false, progress: 0, icon: 'fa-dna' },
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Climate Smart Training</h2>
-          <p className="text-slate-500">Master the technology that drives your productivity.</p>
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Knowledge Base</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Upskill your farming with verified climate-smart techniques.</p>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-[10px] font-black text-slate-400 uppercase">Your Progress</p>
-            <p className="text-sm font-black text-emerald-600">Level 4 Certified</p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-            <i className="fa-solid fa-trophy"></i>
-          </div>
+        <div className="bg-white dark:bg-slate-900 px-6 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+          <i className="fa-solid fa-trophy text-amber-500"></i>
+          <span className="font-black text-slate-800 dark:text-white">LEVEL 2</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map(course => (
-          <div key={course.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-lg transition-shadow">
-            <div className="relative h-48 overflow-hidden">
-              <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              <div className="absolute top-4 left-4 bg-emerald-600 text-white text-[10px] font-black px-2 py-1 rounded-lg uppercase">
-                {course.level}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {modules.map(mod => (
+          <div key={mod.id} className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+            {!mod.free && (
+              <div className="absolute top-4 right-4 px-3 py-1 bg-amber-500 text-amber-950 text-[10px] font-black rounded-lg uppercase flex items-center gap-1 shadow-lg">
+                <i className="fa-solid fa-lock"></i> PRO ONLY
               </div>
-              <button className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                <i className="fa-solid fa-play text-white text-5xl"></i>
-              </button>
-            </div>
-            <div className="p-6">
-              <h3 className="font-bold text-slate-800 mb-2 line-clamp-1">{course.title}</h3>
-              <div className="flex items-center gap-4 text-xs text-slate-400 font-bold mb-4">
-                <span><i className="fa-regular fa-clock mr-1"></i> {course.duration}</span>
-                <span><i className="fa-regular fa-circle-play mr-1"></i> 8 Lessons</span>
+            )}
+            
+            <div className="flex items-start gap-6">
+              <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-2xl transition-all group-hover:scale-110 ${mod.free ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                <i className={`fa-solid ${mod.icon}`}></i>
               </div>
-              <button className="w-full py-3 bg-slate-100 text-slate-600 font-bold text-sm rounded-2xl hover:bg-emerald-600 hover:text-white transition-all">
-                Resume Course
-              </button>
+              <div className="flex-1 space-y-2">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight">{mod.title}</h3>
+                <div className="flex items-center gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span><i className="fa-regular fa-clock mr-1"></i> {mod.duration}</span>
+                  <span><i className="fa-regular fa-circle-play mr-1"></i> 12 Lessons</span>
+                </div>
+                
+                <div className="pt-4">
+                   <div className="flex justify-between items-center mb-1 text-[10px] font-black uppercase text-emerald-600">
+                      <span>Progress</span>
+                      <span>{mod.progress}%</span>
+                   </div>
+                   <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${mod.progress}%` }}></div>
+                   </div>
+                </div>
+
+                <button 
+                  className={`mt-6 w-full py-4 rounded-2xl font-black text-xs uppercase transition-all ${mod.free ? 'bg-slate-900 text-white hover:bg-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}
+                >
+                  {mod.free ? (mod.progress > 0 ? 'RESUME MODULE' : 'START LEARNING') : 'UPGRADE TO UNLOCK'}
+                </button>
+              </div>
             </div>
           </div>
         ))}

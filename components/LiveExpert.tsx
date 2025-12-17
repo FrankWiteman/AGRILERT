@@ -41,7 +41,13 @@ async function decodeAudioData(
   return buffer;
 }
 
-const LiveExpert: React.FC = () => {
+// Added LiveExpertProps interface to fix TypeScript error in App.tsx
+interface LiveExpertProps {
+  location: any;
+  crop: any;
+}
+
+const LiveExpert: React.FC<LiveExpertProps> = ({ location, crop }) => {
   const [isActive, setIsActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   
@@ -113,9 +119,10 @@ const LiveExpert: React.FC = () => {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
           systemInstruction: `You are the AGRILERT AI Agri-Expert. Your role is to interpret real-time Commercial Microwave Link (CML) signal data for farmers. 
+          Current farm location: ${location?.name || 'Unknown'}. Crop under cultivation: ${crop?.name || 'Unknown'}.
           When a farmer speaks to you, explain that you are analyzing signal attenuation between local telecom towers to detect rainfall intensity. 
-          Provide weather advisories, irrigation timing, and crop protection tips based on these 'live' CML readings. 
-          Be professional, encouraging, and clear. Current CML readings in the Ibadan/Oyo region show a 15dB signal drop, indicating heavy localized rain is approaching in 45 minutes.`,
+          Provide weather advisories, irrigation timing, and crop protection tips based on these 'live' CML readings for ${crop?.name || 'the farm'}. 
+          Be professional, encouraging, and clear. Current CML readings in the ${location?.name || 'local'} region show a 15dB signal drop, indicating heavy localized rain is approaching in 45 minutes.`,
         },
         callbacks: {
           onopen: () => {
@@ -218,7 +225,7 @@ const LiveExpert: React.FC = () => {
             <div className="h-full bg-emerald-500 w-1/3 animate-[shimmer_2s_infinite]"></div>
           </div>
           <p className="text-xs text-slate-500 italic leading-relaxed">
-            "I'm analyzing the 15dB signal attenuation from the Ibadan MNO node. It looks like heavy rain is coming..."
+            "I'm analyzing the 15dB signal attenuation from the {location?.name || 'local'} MNO node. It looks like heavy rain is coming to your {crop?.name || 'crop'}..."
           </p>
         </div>
       )}

@@ -11,7 +11,13 @@ interface AdvisoryItem {
   date: string;
 }
 
-const AdvisoryPanel: React.FC = () => {
+// Fixed: Defined AdvisoryPanelProps to accept location and crop from App.tsx
+interface AdvisoryPanelProps {
+  location: any;
+  crop: any;
+}
+
+const AdvisoryPanel = ({ location, crop }: AdvisoryPanelProps) => {
   const [advisories, setAdvisories] = useState<AdvisoryItem[]>([
     {
       id: '1',
@@ -44,8 +50,8 @@ const AdvisoryPanel: React.FC = () => {
       const useLiveMNO = localStorage.getItem('agrilert_use_live_mno') === 'true';
 
       const prompt = `
-        Generate a professional agricultural advisory for a farmer in Nigeria. 
-        Context: The farmer uses a CML-based rainfall monitoring system (AGRILERT).
+        Generate a professional agricultural advisory for a farmer in ${location?.name || 'Nigeria'}. 
+        Context: The farmer uses a CML-based rainfall monitoring system (AGRILERT) and is currently managing ${crop?.name || 'their farm'}.
         Current Mode: ${useLiveMNO ? 'Live MNO Feed' : 'Simulated Data'}.
         
         Please provide exactly ONE advisory in this JSON format:

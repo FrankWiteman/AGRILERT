@@ -1,218 +1,121 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { MOCK_WEATHER_HISTORY } from '../constants.tsx';
-import { GoogleGenAI } from "@google/genai";
 
-const Dashboard: React.FC = () => {
-  // Use a reliable persistence pattern for the MNO toggle
-  const [useLiveMNO, setUseLiveMNO] = useState(() => {
-    const saved = localStorage.getItem('agrilert_use_live_mno');
-    return saved === 'true';
-  });
+interface Props {
+  location: any;
+  crop: any;
+}
 
-  const [liveSignal, setLiveSignal] = useState(94.2);
-  const [liveAttenuation, setLiveAttenuation] = useState(0.52);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [aiAdvisory, setAiAdvisory] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
-
-  // Synchronize state to localStorage and notify other components
-  useEffect(() => {
-    localStorage.setItem('agrilert_use_live_mno', useLiveMNO.toString());
-    window.dispatchEvent(new Event('mno_state_changed'));
-  }, [useLiveMNO]);
-
-  // Handle external changes to MNO state (e.g. from Farm Management tab)
-  useEffect(() => {
-    const handleSync = () => {
-      const current = localStorage.getItem('agrilert_use_live_mno') === 'true';
-      if (current !== useLiveMNO) setUseLiveMNO(current);
-    };
-    window.addEventListener('mno_state_changed', handleSync);
-    return () => window.removeEventListener('mno_state_changed', handleSync);
-  }, [useLiveMNO]);
-
-  // Simulated telemetry fluctuations
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveSignal(prev => {
-        const delta = (Math.random() - 0.5) * 0.8;
-        return Math.min(100, Math.max(70, prev + delta));
-      });
-      setLiveAttenuation(prev => {
-        const delta = (Math.random() - 0.5) * 0.1;
-        return Math.max(0.1, prev + delta);
-      });
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const generateAdvisory = async () => {
-    if (isGenerating) return;
-    setIsGenerating(true);
-    setAiAdvisory(null);
-    setShowModal(true);
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const model = 'gemini-3-flash-preview';
-      
-      const prompt = `
-        As an expert agricultural AI assistant for AGRILERT, provide a high-priority, "Live" advisory for a farmer.
-        
-        Current Live Telemetry:
-        - Signal Source: ${useLiveMNO ? 'MTN National Gateway (Live)' : 'Internal Simulation'}
-        - Link Signal Quality: ${liveSignal.toFixed(1)}%
-        - Precipitation Attenuation: ${liveAttenuation.toFixed(2)} dBm
-        - Location context: Oyo State, Nigeria
-        
-        Task:
-        1. Interpret the current signal drop: ${liveAttenuation.toFixed(2)} dBm attenuation indicates what rainfall intensity?
-        2. Provide one "Immediate Action" for a Maize/Rice field.
-        3. Be brief, technical, yet accessible. 
-        Format: Markdown. Max 80 words.
-      `;
-
-      const response = await ai.models.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
-
-      setAiAdvisory(response.text || "Connection to Agri-Expert timed out. Retrying...");
-    } catch (error) {
-      console.error("AI Advisory Error:", error);
-      setAiAdvisory("Failed to generate live advisory. Please ensure your API Key is valid and try again.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const stats = [
-    { label: 'Signal Quality', value: `${liveSignal.toFixed(1)}%`, trend: useLiveMNO ? 'LIVE FEED' : 'SIMULATED', icon: 'fa-tower-broadcast', color: 'emerald' },
-    { label: 'Current RSL', value: `${(-45 - liveAttenuation).toFixed(1)} dBm`, trend: 'Active', icon: 'fa-gauge-high', color: 'blue' },
-    { label: 'Yield Forecast', value: '4.2 t/h', trend: '+5%', icon: 'fa-wheat-awn', color: 'amber' },
-    { label: 'Soil Health', value: '82/100', trend: 'Stable', icon: 'fa-flask', color: 'green' },
-  ];
+const Dashboard = ({ location, crop }: Props) => {
+  const [accuracyFeedback, setAccuracyFeedback] = useState<boolean | null>(null);
+  const [showSpecialist, setShowSpecialist] = useState(false);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Farm Insights Overview</h2>
-          <p className="text-slate-500">Real-time data synchronization with {useLiveMNO ? 'Enterprise MNO Node' : 'Virtual Engine'}.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 pr-4 gap-3 shadow-sm">
-             <button 
-               onClick={() => setUseLiveMNO(!useLiveMNO)}
-               className={`w-10 h-6 rounded-full transition-all relative ${useLiveMNO ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`}
-             >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${useLiveMNO ? 'left-5 shadow-sm' : 'left-1'}`}></div>
-             </button>
-             <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Live MNO Integration</span>
-          </div>
-          <button 
-            onClick={generateAdvisory}
-            disabled={isGenerating}
-            className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50"
-          >
-            {isGenerating ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
-            {isGenerating ? 'Thinking...' : 'Generate Advisory'}
-          </button>
-        </div>
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-lg w-full overflow-hidden border border-emerald-100 animate-in zoom-in-95 duration-300">
-            <div className="bg-emerald-900 p-6 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <i className="fa-solid fa-wand-magic-sparkles text-emerald-400"></i>
-                <h3 className="font-black uppercase tracking-widest text-sm">Live AI Agri-Expert</h3>
-              </div>
-              <button onClick={() => setShowModal(false)} className="text-emerald-400 hover:text-white transition-colors">
-                <i className="fa-solid fa-xmark text-xl"></i>
-              </button>
-            </div>
-            <div className="p-8">
-              {isGenerating ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-4 text-center">
-                  <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin"></div>
-                  <p className="text-sm font-bold text-slate-400 animate-pulse uppercase tracking-widest">Processing {useLiveMNO ? 'MTN' : 'Simulated'} Link Metrics...</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 relative">
-                    <i className="fa-solid fa-quote-left absolute top-4 left-4 text-emerald-200 text-2xl"></i>
-                    <div className="text-slate-700 leading-relaxed font-medium relative z-10 prose prose-sm prose-emerald">
-                      {aiAdvisory}
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setShowModal(false)}
-                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
-                  >
-                    Apply Advisory
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className={`rounded-[2.5rem] p-6 text-white shadow-xl overflow-hidden relative group transition-all duration-700 ${useLiveMNO ? 'bg-slate-900 border-4 border-emerald-500/20' : 'bg-emerald-900 shadow-emerald-900/10'}`}>
-        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-          <i className="fa-solid fa-tower-broadcast text-[8rem] -rotate-12"></i>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Farm Overview</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px] flex items-center gap-2">
+            <i className="fa-solid fa-location-dot text-emerald-500"></i> {location.name} • {crop.name} ({crop.selectedVariety.name})
+          </p>
         </div>
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500 ${useLiveMNO ? 'bg-emerald-500 text-slate-900 scale-110' : 'bg-emerald-400 text-emerald-900'}`}>
-              <i className={`fa-solid ${useLiveMNO ? 'fa-satellite-dish' : 'fa-tower-cell'} text-2xl ${useLiveMNO ? 'animate-bounce' : 'animate-pulse'}`}></i>
-            </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight uppercase">
-                {useLiveMNO ? 'MNO_GATEWAY_LAGOS_NORTH' : 'Node: IB-SOUTH-042'}
-              </h1>
-              <p className="text-xs text-emerald-300 font-bold uppercase tracking-widest flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full animate-ping ${useLiveMNO ? 'bg-emerald-400' : 'bg-emerald-500'}`}></span>
-                {useLiveMNO ? 'LIVE DATA STREAM ACTIVE' : 'SIMULATED CML ENVIRONMENT'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-8 bg-black/20 backdrop-blur-md p-4 rounded-3xl border border-white/5">
-            <div className="text-right">
-              <p className="text-[10px] font-black text-emerald-400 uppercase mb-1">Attenuation</p>
-              <p className="text-2xl font-black font-mono">
-                {liveAttenuation.toFixed(2)} 
-                <span className="text-xs font-normal opacity-60 ml-1">dB</span>
-              </p>
-            </div>
-            <div className="h-10 w-px bg-white/10"></div>
-            <div className="text-right">
-              <p className="text-[10px] font-black text-emerald-400 uppercase mb-1">Packet Stability</p>
-              <p className="text-2xl font-black font-mono text-emerald-400">99.9%</p>
-            </div>
-          </div>
+        <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+           <div className="px-4 py-1 text-center border-r border-slate-100 dark:border-slate-800">
+             <p className="text-[10px] font-black text-slate-400 uppercase">Soil Health</p>
+             <p className="text-lg font-black text-emerald-600">88%</p>
+           </div>
+           <div className="px-4 py-1 text-center">
+             <p className="text-[10px] font-black text-slate-400 uppercase">Nowcast</p>
+             <p className="text-lg font-black text-amber-500">Cloudy</p>
+           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-md transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl bg-${stat.color}-100 text-${stat.color}-600 group-hover:rotate-12 transition-transform`}>
-                <i className={`fa-solid ${stat.icon}`}></i>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Weather Card */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+           <div className="flex items-center justify-between mb-8">
+              <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-xs">CML Signal Rainfall (24h)</h3>
+              <div className="flex gap-2">
+                 <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center text-emerald-600">
+                   <i className="fa-solid fa-cloud-rain"></i>
+                 </div>
               </div>
-              <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest ${stat.trend.includes('LIVE') ? 'bg-emerald-500 text-white animate-pulse' : (stat.trend.startsWith('+') ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600')}`}>
-                {stat.trend}
-              </span>
-            </div>
-            <p className="text-slate-500 text-xs font-black uppercase tracking-widest">{stat.label}</p>
-            <p className="text-2xl font-black text-slate-900 mt-1">{stat.value}</p>
+           </div>
+           <div className="h-[280px]">
+             <ResponsiveContainer width="100%" height="100%">
+               <AreaChart data={MOCK_WEATHER_HISTORY}>
+                 <defs>
+                   <linearGradient id="colorRain" x1="0" y1="0" x2="0" y2="1">
+                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                     <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                   </linearGradient>
+                 </defs>
+                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                 <XAxis dataKey="time" hide />
+                 <Tooltip />
+                 <Area type="monotone" dataKey="rainfall" stroke="#10b981" fillOpacity={1} fill="url(#colorRain)" strokeWidth={4} />
+               </AreaChart>
+             </ResponsiveContainer>
+           </div>
+        </div>
+
+        {/* Prediction Accuracy Widget */}
+        <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col justify-between shadow-2xl relative overflow-hidden">
+           <div className="absolute top-0 right-0 p-8 opacity-5">
+              <i className="fa-solid fa-radar text-[120px]"></i>
+           </div>
+           <div className="relative z-10">
+              <h3 className="text-2xl font-black leading-tight mb-4">Are our predictions matching your field reality?</h3>
+              <div className="flex gap-4">
+                 <button 
+                  onClick={() => setAccuracyFeedback(true)}
+                  className={`flex-1 py-4 rounded-2xl font-black transition-all ${accuracyFeedback === true ? 'bg-emerald-500 text-white shadow-[0_0_20px_#10b981]' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                 >
+                    <i className="fa-solid fa-thumbs-up mr-2"></i> YES
+                 </button>
+                 <button 
+                  onClick={() => { setAccuracyFeedback(false); setShowSpecialist(true); }}
+                  className={`flex-1 py-4 rounded-2xl font-black transition-all ${accuracyFeedback === false ? 'bg-rose-500 text-white shadow-[0_0_20px_#f43f5e]' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                 >
+                    <i className="fa-solid fa-thumbs-down mr-2"></i> NO
+                 </button>
+              </div>
+           </div>
+           
+           {showSpecialist && (
+             <div className="mt-8 p-4 bg-white/5 rounded-2xl border border-white/10 animate-in fade-in duration-500">
+                <p className="text-xs text-slate-300 mb-3">Discrepancy detected. Immediate corrective actions recommended:</p>
+                <div className="flex gap-2 mb-4">
+                   <div className="px-3 py-1 bg-blue-500/20 text-blue-400 text-[10px] font-black rounded-lg">IRRIGATE (6AM)</div>
+                   <div className="px-3 py-1 bg-amber-500/20 text-amber-400 text-[10px] font-black rounded-lg">MULCHING</div>
+                </div>
+                <button className="w-full py-3 bg-white text-slate-900 font-black rounded-xl text-xs flex items-center justify-center gap-2">
+                   <i className="fa-solid fa-headset"></i> SPEAK TO AGRI-SPECIALIST
+                </button>
+             </div>
+           )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Expect Yield', value: crop.yieldPercentage + '%', icon: 'fa-chart-pie', color: 'emerald' },
+          { label: 'Growth Phase', value: 'Seedling', icon: 'fa-seedling', color: 'blue' },
+          { label: 'Moisture', value: '64%', icon: 'fa-droplet', color: 'cyan' },
+          { label: 'Planting Window', value: '5 Days', icon: 'fa-calendar-check', color: 'amber' },
+        ].map(stat => (
+          <div key={stat.label} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+             <div className={`w-12 h-12 bg-${stat.color}-50 dark:bg-${stat.color}-900/20 text-${stat.color}-600 rounded-2xl flex items-center justify-center text-xl`}>
+                <i className={`fa-solid ${stat.icon}`}></i>
+             </div>
+             <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                <p className="text-xl font-black text-slate-900 dark:text-white">{stat.value}</p>
+             </div>
           </div>
         ))}
       </div>

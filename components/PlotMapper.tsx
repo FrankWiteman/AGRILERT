@@ -3,7 +3,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import L from 'leaflet';
 import { FarmPlot } from '../types.ts';
 
-const PlotMapper: React.FC = () => {
+// Added PlotMapperProps interface to fix TypeScript error in App.tsx
+interface PlotMapperProps {
+  location: any;
+}
+
+const PlotMapper: React.FC<PlotMapperProps> = ({ location }) => {
   const [viewMode, setViewMode] = useState<'schematic' | 'satellite' | 'walk'>('satellite');
   const [vertices, setVertices] = useState<L.LatLng[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -24,7 +29,8 @@ const PlotMapper: React.FC = () => {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const initialPos: [number, number] = [7.3775, 3.9470];
+    // Use location prop for initial position if available
+    const initialPos: [number, number] = location ? [location.lat, location.lng] : [7.3775, 3.9470];
     const map = L.map(containerRef.current, {
       center: initialPos,
       zoom: 18,
