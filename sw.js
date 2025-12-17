@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'agrilert-v2';
+const CACHE_NAME = 'agrilert-netlify-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -7,20 +7,22 @@ const ASSETS_TO_CACHE = [
   './index.tsx',
   './App.tsx',
   './types.ts',
-  './constants.tsx'
+  './constants.tsx',
+  './_redirects'
 ];
 
-// Install Event: Cache essential assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      // Use catch to prevent one failed asset from breaking the whole install
+      return Promise.allSettled(
+        ASSETS_TO_CACHE.map(url => cache.add(url))
+      );
     })
   );
   self.skipWaiting();
 });
 
-// Activate Event: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -32,15 +34,15 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Network First, falling back to cache
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // If valid response, clone it to cache
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
         const resClone = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, resClone);
@@ -48,7 +50,6 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // If network fails, try the cache
         return caches.match(event.request);
       })
   );

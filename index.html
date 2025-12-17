@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AGRILERT</title>
+    <title>AGRILERT | Climate-Smart Hub</title>
     
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -23,22 +23,41 @@
         display: none;
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: #fff; color: #000;
-        padding: 20px; z-index: 9999;
-        font-family: monospace; overflow: auto;
+        background: #1e293b; color: #f8fafc;
+        padding: 40px; z-index: 9999;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        line-height: 1.5;
+        overflow: auto;
       }
     </style>
 
     <script>
-      // Fix for 'process is not defined'
-      window.process = { env: { API_KEY: "" } };
+      // Safer process.env mock for static environments
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
+      if (!window.process.env.API_KEY) {
+        window.process.env.API_KEY = ""; 
+      }
 
-      // Global error listener to debug white screen
+      // Global error listener to debug deployment failures
       window.onerror = function(msg, url, lineNo, columnNo, error) {
+        // Filter out common non-breaking extension or external resource errors
+        if (msg.includes('userReportLinkedCandidate.json') || msg.includes('extension')) return false;
+
         const overlay = document.getElementById('error-overlay');
         if (overlay) {
           overlay.style.display = 'block';
-          overlay.innerHTML += `<p style="color:red">Error: ${msg}<br>at ${url}:${lineNo}:${columnNo}</p>`;
+          overlay.innerHTML = `
+            <h1 style="color:#f43f5e; font-size: 24px; margin-bottom: 16px;">App Launch Error</h1>
+            <div style="background:#0f172a; padding: 20px; border-radius: 8px; border: 1px solid #334155;">
+              <p><strong>Message:</strong> ${msg}</p>
+              <p><strong>File:</strong> ${url}</p>
+              <p><strong>Line:</strong> ${lineNo}:${columnNo}</p>
+              ${error ? `<pre style="margin-top:16px; color:#94a3b8; font-size:12px; white-space: pre-wrap;">${error.stack}</pre>` : ''}
+            </div>
+            <p style="margin-top:20px; color:#94a3b8;">Check the browser console (F12) for more details.</p>
+            <button onclick="location.reload()" style="margin-top:20px; background:#334155; color:white; padding:8px 16px; border-radius:6px; cursor:pointer; border:none;">Retry</button>
+          `;
         }
         return false;
       };
@@ -67,9 +86,23 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('Service Worker registered'))
-            .catch(err => console.log('Service Worker registration failed', err));
+          // Resolve the Service Worker URL relative to current location
+          const swUrl = new URL('./sw.js', window.location.href);
+          
+          // Only attempt registration if origins match to prevent browser security errors
+          // which often occur in sandboxed preview environments.
+          if (swUrl.origin === window.location.origin) {
+            navigator.serviceWorker.register(swUrl.pathname)
+              .then(reg => console.log('Service Worker registered successfully'))
+              .catch(err => {
+                // Silently handle registration failures in local dev environments
+                if (!window.location.host.includes('localhost')) {
+                  console.warn('Service Worker registration skipped or failed:', err);
+                }
+              });
+          } else {
+            console.info('Service Worker registration skipped due to environment origin mismatch.');
+          }
         });
       }
     </script>
