@@ -9,9 +9,9 @@ interface AdvisoryItem {
   content: string;
   urgency: string;
   date: string;
+  expanded?: boolean;
 }
 
-// Fixed: Defined AdvisoryPanelProps to accept location and crop from App.tsx
 interface AdvisoryPanelProps {
   location: any;
   crop: any;
@@ -23,17 +23,9 @@ const AdvisoryPanel = ({ location, crop }: AdvisoryPanelProps) => {
       id: '1',
       title: 'Optimal Planting Window Detected',
       category: 'Planting',
-      content: 'CML data suggests steady rainfall patterns for the next 10 days in Ibadan. This is the ideal window for Maize planting.',
+      content: 'CML data suggests steady rainfall patterns for the next 10 days in your region. This is the ideal window for initial seed cultivation.',
       urgency: 'High',
       date: 'Latest'
-    },
-    {
-      id: '2',
-      title: 'Pest Outbreak Alert: Fall Armyworm',
-      category: 'Pest Control',
-      content: 'Current humidity levels (85%+) are conducive to Fall Armyworm growth. Inspect your Cowpea fields immediately.',
-      urgency: 'High',
-      date: 'Recent'
     }
   ]);
 
@@ -42,101 +34,53 @@ const AdvisoryPanel = ({ location, crop }: AdvisoryPanelProps) => {
   const fetchLiveAdvisory = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
-
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const model = 'gemini-3-flash-preview';
-      
-      const useLiveMNO = localStorage.getItem('agrilert_use_live_mno') === 'true';
-
-      const prompt = `
-        Generate a professional agricultural advisory for a farmer in ${location?.name || 'Nigeria'}. 
-        Context: The farmer uses a CML-based rainfall monitoring system (AGRILERT) and is currently managing ${crop?.name || 'their farm'}.
-        Current Mode: ${useLiveMNO ? 'Live MNO Feed' : 'Simulated Data'}.
-        
-        Please provide exactly ONE advisory in this JSON format:
-        {
-          "title": "Short catchy title",
-          "category": "One of: Planting, Irrigation, Pest Control, or Harvest",
-          "content": "Specific actionable advice based on current climate trends in Nigeria",
-          "urgency": "High or Medium"
-        }
-      `;
-
+      const prompt = `Generate a specific agricultural advisory for a farmer in ${location?.name}. Crop: ${crop?.name} (${crop?.selectedVariety?.name}). Urgency: High. Include technical advice on soil and climate. JSON: {title, category, content, urgency}`;
       const response = await ai.models.generateContent({
-        model,
+        model: 'gemini-3-flash-preview',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: "application/json" }
       });
-
       const result = JSON.parse(response.text);
-      const newAdvisory: AdvisoryItem = {
-        id: Date.now().toString(),
-        title: result.title,
-        category: result.category,
-        content: result.content,
-        urgency: result.urgency,
-        date: 'Generated Now'
-      };
-
-      setAdvisories([newAdvisory, ...advisories]);
-    } catch (error) {
-      console.error("AI Generation Error:", error);
-    } finally {
-      setIsGenerating(false);
-    }
+      setAdvisories([{ ...result, id: Date.now().toString(), date: 'Live Analysis' }, ...advisories]);
+    } catch (err) { console.error(err); }
+    finally { setIsGenerating(false); }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Climate Smart Advisories</h2>
-          <p className="text-slate-500 text-sm">Real-time alerts powered by AI & CML Telemetry.</p>
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">AI Agri-Advisory</h2>
+          <p className="text-slate-500 text-sm font-medium">Coordinate-locked alerts and climate smart techniques.</p>
         </div>
-        <button 
-          onClick={fetchLiveAdvisory}
-          disabled={isGenerating}
-          className="bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all disabled:opacity-50"
-        >
+        <button onClick={fetchLiveAdvisory} disabled={isGenerating} className="px-8 py-4 bg-slate-900 text-white dark:bg-emerald-500 dark:text-emerald-950 font-black rounded-2xl flex items-center gap-3 uppercase tracking-widest text-[10px] shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50">
           {isGenerating ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
-          {isGenerating ? 'Generating...' : 'Live AI Advisory'}
+          {isGenerating ? 'Analyzing Feed...' : 'Generate Live Advisory'}
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {advisories.map((advisory) => (
-          <div key={advisory.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 hover:border-emerald-200 transition-all group animate-in slide-in-from-bottom-4 duration-500">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 transition-transform group-hover:scale-110
-              ${advisory.category === 'Planting' ? 'bg-emerald-100 text-emerald-600' : 
-                advisory.category === 'Pest Control' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'}
-            `}>
-              <i className={`fa-solid ${
-                advisory.category === 'Planting' ? 'fa-seedling' : 
-                advisory.category === 'Pest Control' ? 'fa-bugs' : 'fa-droplet'
-              }`}></i>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{advisory.category} • {advisory.date}</span>
-                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${advisory.urgency === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {advisory.urgency} Urgency
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">{advisory.title}</h3>
-              <p className="text-slate-500 leading-relaxed text-sm font-medium">{advisory.content}</p>
-            </div>
-            <div className="flex md:flex-col justify-end gap-2">
-              <button className="flex-1 md:flex-none px-6 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all">
-                Learn More
-              </button>
-              <button 
-                onClick={() => setAdvisories(advisories.filter(a => a.id !== advisory.id))}
-                className="flex-1 md:flex-none px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all"
-              >
-                Dismiss
-              </button>
-            </div>
+        {advisories.map((ad) => (
+          <div key={ad.id} className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-6 hover:border-emerald-500 transition-all group">
+             <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center text-3xl flex-shrink-0 ${ad.category === 'Planting' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                <i className={`fa-solid ${ad.category === 'Planting' ? 'fa-seedling' : 'fa-droplet'}`}></i>
+             </div>
+             <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ad.category} • {ad.date}</span>
+                   <span className="px-3 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-black rounded-lg">{ad.urgency} URGENCY</span>
+                </div>
+                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">{ad.title}</h3>
+                <p className={`text-slate-500 dark:text-slate-400 font-medium leading-relaxed ${ad.expanded ? '' : 'line-clamp-2'}`}>{ad.content}</p>
+                <button 
+                  onClick={() => setAdvisories(advisories.map(a => a.id === ad.id ? {...a, expanded: !a.expanded} : a))}
+                  className="mt-4 text-emerald-600 font-black uppercase text-[10px] tracking-widest flex items-center gap-2 hover:gap-4 transition-all"
+                >
+                   {ad.expanded ? 'Show Less' : 'Learn More'} <i className="fa-solid fa-arrow-right-long"></i>
+                </button>
+             </div>
           </div>
         ))}
       </div>

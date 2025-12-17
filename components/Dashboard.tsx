@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { MOCK_WEATHER_HISTORY } from '../constants.tsx';
 
@@ -9,26 +9,19 @@ interface Props {
 }
 
 const Dashboard = ({ location, crop }: Props) => {
-  const [predictionStep, setPredictionStep] = useState<'ask' | 'corrective' | 'done'>('ask');
-  const [accuracyAnswer, setAccuracyAnswer] = useState<boolean | null>(null);
+  const [timeStatus, setTimeStatus] = useState({ label: 'Sunny', icon: 'fa-sun', color: 'text-amber-500' });
+  const [irrigationNeeded, setIrrigationNeeded] = useState(false);
 
-  // Simulated 5-year historical rain data
-  const historicalData = [
-    { year: '2020', rain: 1200 },
-    { year: '2021', rain: 1150 },
-    { year: '2022', rain: 1400 },
-    { year: '2023', rain: 1250 },
-    { year: '2024 (Est)', rain: 1320 },
-  ];
+  useEffect(() => {
+    const hour = new Date().getHours();
+    const isNight = hour >= 19 || hour <= 6;
+    if (isNight) setTimeStatus({ label: 'Clear Night', icon: 'fa-moon', color: 'text-indigo-400' });
+    else setTimeStatus({ label: 'Clear Sky', icon: 'fa-sun', color: 'text-amber-500' });
 
-  const handleAccuracy = (isAccurate: boolean) => {
-    setAccuracyAnswer(isAccurate);
-    if (!isAccurate) {
-      setPredictionStep('corrective');
-    } else {
-      setPredictionStep('done');
-    }
-  };
+    // Simulate irrigation detection logic based on humidity and phantom sensor data
+    const humidity = parseInt(location?.climate?.humidity || '60');
+    if (humidity < 50) setIrrigationNeeded(true);
+  }, [location]);
 
   return (
     <div className="space-y-6">
@@ -40,25 +33,35 @@ const Dashboard = ({ location, crop }: Props) => {
           </p>
         </div>
         
-        <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 shadow-sm">
-           <div className="px-4 py-1 text-center border-r border-slate-100 dark:border-slate-800">
-             <p className="text-[10px] font-black text-slate-400 uppercase">Soil PH</p>
-             <p className="text-lg font-black text-emerald-600">{location.soil?.ph || '6.5'}</p>
-           </div>
-           <div className="px-4 py-1 text-center">
-             <p className="text-[10px] font-black text-slate-400 uppercase">Nowcast</p>
-             <p className="text-lg font-black text-amber-500">Sunny</p>
+        <div className="flex gap-4">
+           {irrigationNeeded && (
+             <div className="px-6 py-2 bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl flex items-center gap-2 animate-pulse">
+                <i className="fa-solid fa-droplet"></i>
+                <span className="text-[10px] font-black uppercase tracking-widest">Irrigation Required</span>
+             </div>
+           )}
+           <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 shadow-sm">
+              <div className="px-4 py-1 text-center border-r border-slate-100 dark:border-slate-800">
+                <p className="text-[10px] font-black text-slate-400 uppercase">Soil PH</p>
+                <p className="text-lg font-black text-emerald-600">{location.soil?.ph || '6.5'}</p>
+              </div>
+              <div className="px-4 py-1 text-center flex items-center gap-3">
+                <div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase">Nowcast</p>
+                   <p className={`text-sm font-black ${timeStatus.color}`}>{timeStatus.label}</p>
+                </div>
+                <i className={`fa-solid ${timeStatus.icon} ${timeStatus.color} text-xl`}></i>
+              </div>
            </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Real-time Nowcast / Forecast */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
            <div className="flex items-center justify-between mb-8">
               <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-xs">Localized Forecast (Next 24h)</h3>
               <div className="flex gap-2">
-                 <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 text-[10px] font-black rounded-lg">LIVE CML DATA</span>
+                 <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 text-[10px] font-black rounded-lg uppercase">MNO CML Signal</span>
               </div>
            </div>
            <div className="h-[280px]">
@@ -79,118 +82,23 @@ const Dashboard = ({ location, crop }: Props) => {
            </div>
         </div>
 
-        {/* Prediction Accuracy Loop */}
-        <div className={`p-8 rounded-[3rem] flex flex-col justify-between shadow-2xl relative overflow-hidden transition-all duration-500 ${predictionStep === 'corrective' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'}`}>
-           {predictionStep === 'ask' && (
-             <div className="space-y-6">
-               <h3 className="text-2xl font-black leading-tight">How far with the predictions?</h3>
-               <p className="text-slate-400 text-sm font-medium">Is the actual weather in your field matching our forecast?</p>
-               <div className="flex gap-3">
-                  <button 
-                    onClick={() => handleAccuracy(true)}
-                    className="flex-1 py-4 bg-white/10 hover:bg-emerald-500 hover:text-white transition-all rounded-2xl font-black flex flex-col items-center gap-2"
-                  >
-                    <i className="fa-solid fa-thumbs-up text-xl"></i> YES
-                  </button>
-                  <button 
-                    onClick={() => handleAccuracy(false)}
-                    className="flex-1 py-4 bg-white/10 hover:bg-rose-500 hover:text-white transition-all rounded-2xl font-black flex flex-col items-center gap-2"
-                  >
-                    <i className="fa-solid fa-thumbs-down text-xl"></i> NO
-                  </button>
-               </div>
-             </div>
-           )}
-
-           {predictionStep === 'corrective' && (
-             <div className="space-y-6 animate-in zoom-in-95">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl">
-                   <i className="fa-solid fa-triangle-exclamation"></i>
-                </div>
-                <h3 className="text-2xl font-black leading-tight">Corrective Strategy</h3>
-                <p className="text-white/80 text-sm">Calibration error detected. Based on your report, we recommend immediate remediation:</p>
-                <div className="space-y-2">
-                   <div className="p-3 bg-white/10 rounded-xl border border-white/20 flex items-center gap-3">
-                      <i className="fa-solid fa-vial"></i> <span className="text-xs font-bold">Add High-Nitrogen Manure</span>
-                   </div>
-                   <div className="p-3 bg-white/10 rounded-xl border border-white/20 flex items-center gap-3">
-                      <i className="fa-solid fa-droplet"></i> <span className="text-xs font-bold">Supplemental Irrigation</span>
-                   </div>
-                </div>
-                <button className="w-full py-4 bg-white text-rose-600 font-black rounded-2xl text-xs uppercase tracking-widest hover:scale-105 transition-transform">
-                   SPEAK TO SPECIALIST
-                </button>
-             </div>
-           )}
-
-           {predictionStep === 'done' && (
-             <div className="text-center py-12 space-y-4 animate-in fade-in">
-                <i className="fa-solid fa-circle-check text-6xl text-emerald-500"></i>
-                <h3 className="text-2xl font-black uppercase">Sync Complete</h3>
-                <p className="text-slate-400 text-sm">Field data confirmed. Predictions optimized for {crop.name}.</p>
-                <button onClick={() => setPredictionStep('ask')} className="text-xs font-black uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">Recalibrate</button>
-             </div>
-           )}
+        <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col justify-between relative overflow-hidden">
+           <div className="absolute top-0 right-0 p-8 opacity-5"><i className="fa-solid fa-radar text-8xl"></i></div>
+           <h3 className="text-2xl font-black uppercase italic leading-tight mb-4">Site Intelligence Report</h3>
+           <div className="space-y-4">
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                 <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Humidity Index</p>
+                 <p className="text-2xl font-black">{location?.climate?.humidity || '68%'}</p>
+              </div>
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                 <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Avg Temperature</p>
+                 <p className="text-2xl font-black">{location?.climate?.temp || '30°C'}</p>
+              </div>
+           </div>
+           <div className="mt-8 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-[10px] font-bold text-emerald-400">
+              "Predicted moisture retention is stable. No rainfall detected via CML links in the 5km radius."
+           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Historical View */}
-         <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm">
-            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-[10px] mb-6">5-Year Rain Distribution</h3>
-            <div className="h-[200px]">
-               <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={historicalData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="year" hide />
-                    <Bar dataKey="rain" fill="#cbd5e1" radius={[8, 8, 0, 0]} />
-                 </BarChart>
-               </ResponsiveContainer>
-            </div>
-            <p className="mt-4 text-[11px] font-medium text-slate-500 leading-relaxed">Historical trends show your region is entering a decadal moist cycle. Expect +15% rainfall for the current season.</p>
-         </div>
-
-         {/* Soil Info */}
-         <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-widest text-[10px]">Soil Profile</h3>
-            <div className="space-y-4 py-4">
-               <div className="flex justify-between items-center text-sm font-bold">
-                  <span className="text-slate-400 uppercase tracking-widest text-[10px]">Nitrogen</span>
-                  <span className="text-emerald-600 uppercase">Optimal</span>
-               </div>
-               <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[75%]"></div>
-               </div>
-               <div className="flex justify-between items-center text-sm font-bold">
-                  <span className="text-slate-400 uppercase tracking-widest text-[10px]">Phosphorus</span>
-                  <span className="text-amber-600 uppercase">Moderate</span>
-               </div>
-               <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500 w-[45%]"></div>
-               </div>
-            </div>
-            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-500/10">
-               <p className="text-[10px] text-emerald-800 dark:text-emerald-400 font-bold italic">"Recommended: Top-dress with urea in 14 days."</p>
-            </div>
-         </div>
-
-         {/* Yield Estimate Widget */}
-         <div className="bg-emerald-600 p-8 rounded-[3rem] text-white shadow-xl shadow-emerald-600/20 relative overflow-hidden">
-            <div className="relative z-10">
-               <h3 className="font-black uppercase tracking-widest text-[10px] text-emerald-200 mb-6">Estimated Market Yield</h3>
-               <p className="text-4xl font-black mb-2">₦94,200</p>
-               <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-widest">Based on current commodity rates</p>
-               <div className="mt-8 pt-8 border-t border-white/20">
-                  <div className="flex justify-between items-center text-xs font-bold mb-2">
-                     <span>Seed Potential</span>
-                     <span>{crop.yieldPercentage}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
-                     <div className="h-full bg-white" style={{ width: `${crop.yieldPercentage}%` }}></div>
-                  </div>
-               </div>
-            </div>
-         </div>
       </div>
     </div>
   );

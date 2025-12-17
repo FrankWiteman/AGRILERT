@@ -20,19 +20,22 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('agrilert_theme') === 'dark');
   
-  // User Profile & Settings
+  // App Stage: 'onboarding' -> 'main'
+  const [stage, setStage] = useState<'onboarding' | 'main'>(() => {
+    return localStorage.getItem('agrilert_crop') ? 'main' : 'onboarding';
+  });
+
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('agrilert_user');
     return saved ? JSON.parse(saved) : { 
       name: 'New Farmer', 
-      address: 'Ibadan, Nigeria', 
+      address: '', 
       subscription: 'Free', 
-      paymentMethod: 'Not Linked',
-      joined: '2024'
+      joined: '2024',
+      bio: 'Eco-conscious cultivator from West Africa.'
     };
   });
 
-  // Farm Context
   const [farmLocation, setFarmLocation] = useState<any>(() => {
     const saved = localStorage.getItem('agrilert_location');
     return saved ? JSON.parse(saved) : null;
@@ -48,34 +51,34 @@ const App: React.FC = () => {
     localStorage.setItem('agrilert_crop', JSON.stringify(selectedCrop));
     localStorage.setItem('agrilert_user', JSON.stringify(user));
     localStorage.setItem('agrilert_theme', isDarkMode ? 'dark' : 'light');
-    
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (isDarkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, [farmLocation, selectedCrop, user, isDarkMode]);
 
   const resetFarm = () => {
     setFarmLocation(null);
     setSelectedCrop(null);
+    setStage('onboarding');
     setActiveTab('dashboard');
+  };
+
+  const completeOnboarding = (location: any, crop: any) => {
+    setFarmLocation(location);
+    setSelectedCrop(crop);
+    setStage('main');
   };
 
   return (
     <Router>
       <div className={`flex min-h-screen font-sans overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
-        {!farmLocation ? (
-          <LocationSetup onComplete={setFarmLocation} />
-        ) : !selectedCrop ? (
-          <CropSelection location={farmLocation} onComplete={setSelectedCrop} onBack={() => setFarmLocation(null)} />
+        {stage === 'onboarding' ? (
+          <LocationSetup 
+            onFinalize={(location, crop) => completeOnboarding(location, crop)}
+          />
         ) : (
           <>
             {isMobileMenuOpen && (
-              <div 
-                className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden"
-                onClick={() => setIsMobileMenuOpen(false)}
-              />
+              <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
             )}
 
             <Sidebar 
@@ -89,7 +92,7 @@ const App: React.FC = () => {
               <Header 
                 user={user} 
                 onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-                locationName={farmLocation.name}
+                locationName={farmLocation?.name || "My Farm"}
               />
               
               <main className="flex-1 p-4 md:p-8 overflow-y-auto mt-16 scrollbar-hide">
@@ -101,17 +104,9 @@ const App: React.FC = () => {
                   {activeTab === 'management' && <FarmManagement user={user} setUser={setUser} />}
                   {activeTab === 'education' && <EducationCenter />}
                   {activeTab === 'community' && <CommunityHub user={user} />}
-                  {activeTab === 'profile' && (
-                    <Profile 
-                      user={user} 
-                      setUser={setUser} 
-                      isDarkMode={isDarkMode} 
-                      setIsDarkMode={setIsDarkMode} 
-                    />
-                  )}
+                  {activeTab === 'profile' && <Profile user={user} setUser={setUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />}
                 </div>
               </main>
-              
               <LiveExpert location={farmLocation} crop={selectedCrop} />
             </div>
           </>
