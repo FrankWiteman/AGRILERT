@@ -7,8 +7,7 @@ const ASSETS_TO_CACHE = [
   './index.tsx',
   './App.tsx',
   './types.ts',
-  './constants.tsx',
-  './_redirects'
+  './constants.tsx'
 ];
 
 self.addEventListener('install', (event) => {

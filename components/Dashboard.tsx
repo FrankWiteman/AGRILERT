@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { MOCK_WEATHER_HISTORY } from '../constants';
+import { MOCK_WEATHER_HISTORY } from '../constants.tsx';
 
 const Dashboard: React.FC = () => {
   const [liveSignal, setLiveSignal] = useState(94.2);

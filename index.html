@@ -3,16 +3,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AGRILERT | Climate-Smart Hub</title>
     
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="AGRILERT">
     <meta name="theme-color" content="#064e3b">
+    
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/628/628283.png">
+    
+    <!-- Splash Screen for iOS (Optional but improves "App" feel) -->
+    <link rel="apple-touch-startup-image" href="https://cdn-icons-png.flaticon.com/512/628/628283.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,21 +34,29 @@
         line-height: 1.5;
         overflow: auto;
       }
+      /* Prevent elastic scrolling on iOS */
+      body {
+        position: fixed;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        -webkit-overflow-scrolling: touch;
+      }
+      #root {
+        height: 100%;
+        overflow-y: auto;
+      }
     </style>
 
     <script>
-      // Safer process.env mock for static environments
       window.process = window.process || {};
       window.process.env = window.process.env || {};
       if (!window.process.env.API_KEY) {
         window.process.env.API_KEY = ""; 
       }
 
-      // Global error listener to debug deployment failures
       window.onerror = function(msg, url, lineNo, columnNo, error) {
-        // Filter out common non-breaking extension or external resource errors
-        if (msg.includes('userReportLinkedCandidate.json') || msg.includes('extension')) return false;
-
+        if (typeof msg === 'string' && (msg.includes('userReportLinkedCandidate.json') || msg.includes('extension'))) return false;
         const overlay = document.getElementById('error-overlay');
         if (overlay) {
           overlay.style.display = 'block';
@@ -55,7 +68,6 @@
               <p><strong>Line:</strong> ${lineNo}:${columnNo}</p>
               ${error ? `<pre style="margin-top:16px; color:#94a3b8; font-size:12px; white-space: pre-wrap;">${error.stack}</pre>` : ''}
             </div>
-            <p style="margin-top:20px; color:#94a3b8;">Check the browser console (F12) for more details.</p>
             <button onclick="location.reload()" style="margin-top:20px; background:#334155; color:white; padding:8px 16px; border-radius:6px; cursor:pointer; border:none;">Retry</button>
           `;
         }
@@ -86,23 +98,11 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Resolve the Service Worker URL relative to current location
-          const swUrl = new URL('./sw.js', window.location.href);
-          
-          // Only attempt registration if origins match to prevent browser security errors
-          // which often occur in sandboxed preview environments.
-          if (swUrl.origin === window.location.origin) {
-            navigator.serviceWorker.register(swUrl.pathname)
-              .then(reg => console.log('Service Worker registered successfully'))
-              .catch(err => {
-                // Silently handle registration failures in local dev environments
-                if (!window.location.host.includes('localhost')) {
-                  console.warn('Service Worker registration skipped or failed:', err);
-                }
-              });
-          } else {
-            console.info('Service Worker registration skipped due to environment origin mismatch.');
-          }
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registered successfully'))
+            .catch(err => {
+              console.info('Service Worker registration skipped or failed:', err);
+            });
         });
       }
     </script>
