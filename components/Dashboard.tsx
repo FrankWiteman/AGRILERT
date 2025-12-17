@@ -2,11 +2,26 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { MOCK_WEATHER_HISTORY } from '../constants.tsx';
+import { GoogleGenAI } from "@google/genai";
 
 const Dashboard: React.FC = () => {
+  // Persistence for MNO state
+  const [useLiveMNO, setUseLiveMNO] = useState(() => {
+    const saved = localStorage.getItem('agrilert_use_live_mno');
+    return saved === 'true';
+  });
+
   const [liveSignal, setLiveSignal] = useState(94.2);
   const [liveAttenuation, setLiveAttenuation] = useState(0.52);
-  const [useLiveMNO, setUseLiveMNO] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiAdvisory, setAiAdvisory] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('agrilert_use_live_mno', useLiveMNO.toString());
+    // Dispatch a custom event so other components (like MNOIntegrator) can sync
+    window.dispatchEvent(new Event('mno_state_changed'));
+  }, [useLiveMNO]);
 
   // Simulate real-time data fluctuations
   useEffect(() => {
@@ -23,6 +38,47 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const generateAdvisory = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setAiAdvisory(null);
+    setShowModal(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const model = 'gemini-3-flash-preview';
+      
+      const prompt = `
+        As an expert agricultural AI assistant for AGRILERT, provide a concise, actionable advisory for a farmer in Oyo State, Nigeria.
+        
+        Current Telemetry:
+        - CML Signal Quality: ${liveSignal.toFixed(1)}%
+        - Signal Attenuation: ${liveAttenuation.toFixed(2)} dBm
+        - DataSource: ${useLiveMNO ? 'MTN Live Gateway' : 'CML Simulation'}
+        - Est. Rainfall (from signal drop): ${liveAttenuation > 1.2 ? 'High Probability of Heavy Rain' : 'Stable/Clear'}
+        - Current Market Forecast: ₦1.2M estimated yield
+        
+        Provide:
+        1. A brief weather prediction based on the CML signal patterns.
+        2. One specific action for Maize or Rice crops (e.g., nitrogen application, pest scouting, or drainage management).
+        3. A professional, encouraging closing.
+        Keep it under 100 words.
+      `;
+
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+
+      setAiAdvisory(response.text || "No advisory could be generated at this time.");
+    } catch (error) {
+      console.error("AI Generation Error:", error);
+      setAiAdvisory("Failed to connect to AI Expert. Please check your network and try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const stats = [
     { label: 'Avg Rainfall', value: useLiveMNO ? '18.2 mm' : '12.4 mm', trend: '+14%', icon: 'fa-cloud-rain', color: 'blue' },
     { label: 'CML Signal', value: `${liveSignal.toFixed(1)}%`, trend: useLiveMNO ? 'MNO LIVE' : 'SIMULATED', icon: 'fa-tower-broadcast', color: 'emerald' },
@@ -38,20 +94,65 @@ const Dashboard: React.FC = () => {
           <p className="text-slate-500">Real-time data from {useLiveMNO ? 'MTN Enterprise Feed' : 'CML simulation engine'}.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 pr-4 gap-3">
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 pr-4 gap-3 shadow-sm">
              <button 
                onClick={() => setUseLiveMNO(!useLiveMNO)}
                className={`w-10 h-6 rounded-full transition-colors relative ${useLiveMNO ? 'bg-emerald-500' : 'bg-slate-300'}`}
              >
                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${useLiveMNO ? 'left-5' : 'left-1'}`}></div>
              </button>
-             <span className="text-xs font-black uppercase text-slate-500">Live MNO Integration</span>
+             <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Live MNO Integration</span>
           </div>
-          <button className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20">
-            Generate Advisory
+          <button 
+            onClick={generateAdvisory}
+            disabled={isGenerating}
+            className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-50"
+          >
+            {isGenerating ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
+            {isGenerating ? 'Thinking...' : 'Generate Advisory'}
           </button>
         </div>
       </div>
+
+      {/* Modal for AI Advisory */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-lg w-full overflow-hidden border border-emerald-100 animate-in zoom-in-95 duration-300">
+            <div className="bg-emerald-900 p-6 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <i className="fa-solid fa-wand-magic-sparkles text-emerald-400"></i>
+                <h3 className="font-black uppercase tracking-widest text-sm">AGRILERT AI Expert</h3>
+              </div>
+              <button onClick={() => setShowModal(false)} className="text-emerald-400 hover:text-white transition-colors">
+                <i className="fa-solid fa-xmark text-xl"></i>
+              </button>
+            </div>
+            <div className="p-8">
+              {isGenerating ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin"></div>
+                  <p className="text-sm font-bold text-slate-400 animate-pulse uppercase tracking-widest">Analyzing CML Data Patterns...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 relative">
+                    <i className="fa-solid fa-quote-left absolute top-4 left-4 text-emerald-200 text-2xl"></i>
+                    <p className="text-slate-700 leading-relaxed font-medium relative z-10 whitespace-pre-wrap italic">
+                      {aiAdvisory}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setShowModal(false)}
+                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all"
+                  >
+                    Got it, thanks!
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Real-time CML Header Banner */}
       <div className={`rounded-[2rem] p-6 text-white shadow-xl overflow-hidden relative group transition-colors duration-500 ${useLiveMNO ? 'bg-slate-900 border-4 border-emerald-500/20' : 'bg-emerald-900'}`}>

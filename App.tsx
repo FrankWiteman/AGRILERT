@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { HashRouter as Router } from 'react-router-dom';
 import Sidebar from './components/Sidebar.tsx';
@@ -9,8 +10,8 @@ import FarmManagement from './components/FarmManagement.tsx';
 import EducationCenter from './components/EducationCenter.tsx';
 import CommunityHub from './components/CommunityHub.tsx';
 import LiveExpert from './components/LiveExpert.tsx';
-// Renamed to IOSInstallPrompt to follow React component naming conventions
 import IOSInstallPrompt from './components/iOSInstallPrompt.tsx';
+import PlotMapper from './components/PlotMapper.tsx';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -46,6 +47,7 @@ const App: React.FC = () => {
           <main className="flex-1 p-4 md:p-8 overflow-y-auto mt-16">
             <div className="max-w-7xl mx-auto pb-24">
               {activeTab === 'dashboard' && <Dashboard />}
+              {activeTab === 'mapping' && <PlotMapper />}
               {activeTab === 'simulation' && <VirtualSimulation />}
               {activeTab === 'advisory' && <AdvisoryPanel />}
               {activeTab === 'management' && <FarmManagement />}
@@ -56,7 +58,6 @@ const App: React.FC = () => {
         </div>
 
         {/* PWA Helpers */}
-        {/* Fixed: Capitalized component tag name */}
         <IOSInstallPrompt />
         <LiveExpert />
       </div>

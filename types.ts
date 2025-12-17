@@ -6,6 +6,21 @@ export enum CropType {
   Cassava = 'Cassava'
 }
 
+export interface PlotCoordinate {
+  x: number;
+  y: number;
+  lat?: number;
+  lng?: number;
+}
+
+export interface FarmPlot {
+  id: string;
+  name: string;
+  boundary: PlotCoordinate[];
+  areaHectares: number;
+  center: PlotCoordinate;
+}
+
 export interface SimulationState {
   day: number;
   growth: number;

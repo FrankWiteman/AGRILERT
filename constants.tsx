@@ -16,6 +16,7 @@ export const MOCK_WEATHER_HISTORY = Array.from({ length: 24 }, (_, i) => ({
 
 export const NAVIGATION_ITEMS = [
   { label: 'Dashboard', icon: 'fa-chart-line', id: 'dashboard' },
+  { label: 'Plot Mapper', icon: 'fa-map-location-dot', id: 'mapping' },
   { label: 'Virtual Farm', icon: 'fa-clover', id: 'simulation' },
   { label: 'Advisory', icon: 'fa-lightbulb', id: 'advisory' },
   { label: 'Management', icon: 'fa-list-check', id: 'management' },
