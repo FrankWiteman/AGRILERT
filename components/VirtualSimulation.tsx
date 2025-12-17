@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CropType, SimulationState } from '../types';
+import { CropType, SimulationState } from '../types.ts';
 
 // Realistic SVG Plant Component with 4 stages and health variants
 const RealisticPlant: React.FC<{ growth: number, unhealthy: boolean, delay: number }> = ({ growth, unhealthy, delay }) => {

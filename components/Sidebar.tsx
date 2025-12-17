@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NAVIGATION_ITEMS } from '../constants';
+import { NAVIGATION_ITEMS } from '../constants.tsx';
 
 interface SidebarProps {
   activeTab: string;

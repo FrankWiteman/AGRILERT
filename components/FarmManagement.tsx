@@ -1,6 +1,6 @@
 
 import React from 'react';
-import MNOIntegrator from './MNOIntegrator';
+import MNOIntegrator from './MNOIntegrator.tsx';
 
 const FarmManagement: React.FC = () => {
   return (

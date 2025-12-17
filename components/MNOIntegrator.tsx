@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MNOConfig, RawTelemetry } from '../types';
+import { MNOConfig, RawTelemetry } from '../types.ts';
 
 const MNOIntegrator: React.FC = () => {
   const [config, setConfig] = useState<MNOConfig>({

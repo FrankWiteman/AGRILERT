@@ -1,15 +1,15 @@
 
 import React, { useState } from 'react';
 import { HashRouter as Router } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import Dashboard from './components/Dashboard';
-import VirtualSimulation from './components/VirtualSimulation';
-import AdvisoryPanel from './components/AdvisoryPanel';
-import FarmManagement from './components/FarmManagement';
-import EducationCenter from './components/EducationCenter';
-import CommunityHub from './components/CommunityHub';
-import LiveExpert from './components/LiveExpert';
+import Sidebar from './components/Sidebar.tsx';
+import Header from './components/Header.tsx';
+import Dashboard from './components/Dashboard.tsx';
+import VirtualSimulation from './components/VirtualSimulation.tsx';
+import AdvisoryPanel from './components/AdvisoryPanel.tsx';
+import FarmManagement from './components/FarmManagement.tsx';
+import EducationCenter from './components/EducationCenter.tsx';
+import CommunityHub from './components/CommunityHub.tsx';
+import LiveExpert from './components/LiveExpert.tsx';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
