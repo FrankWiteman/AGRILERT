@@ -20,12 +20,19 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('agrilert_theme') === 'dark');
   
-  // App State
+  // User Profile & Settings
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('agrilert_user');
-    return saved ? JSON.parse(saved) : { name: 'New Farmer', address: '', subscription: 'Free', email: '' };
+    return saved ? JSON.parse(saved) : { 
+      name: 'New Farmer', 
+      address: 'Ibadan, Nigeria', 
+      subscription: 'Free', 
+      paymentMethod: 'Not Linked',
+      joined: '2024'
+    };
   });
 
+  // Farm Context
   const [farmLocation, setFarmLocation] = useState<any>(() => {
     const saved = localStorage.getItem('agrilert_location');
     return saved ? JSON.parse(saved) : null;
@@ -36,12 +43,12 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Persistence
   useEffect(() => {
     localStorage.setItem('agrilert_location', JSON.stringify(farmLocation));
     localStorage.setItem('agrilert_crop', JSON.stringify(selectedCrop));
     localStorage.setItem('agrilert_user', JSON.stringify(user));
     localStorage.setItem('agrilert_theme', isDarkMode ? 'dark' : 'light');
+    
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -57,16 +64,16 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className={`flex min-h-screen font-sans overflow-hidden ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      <div className={`flex min-h-screen font-sans overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
         {!farmLocation ? (
           <LocationSetup onComplete={setFarmLocation} />
         ) : !selectedCrop ? (
-          <CropSelection location={farmLocation} onComplete={setSelectedCrop} />
+          <CropSelection location={farmLocation} onComplete={setSelectedCrop} onBack={() => setFarmLocation(null)} />
         ) : (
           <>
             {isMobileMenuOpen && (
               <div 
-                className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300"
+                className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden"
                 onClick={() => setIsMobileMenuOpen(false)}
               />
             )}
@@ -94,7 +101,14 @@ const App: React.FC = () => {
                   {activeTab === 'management' && <FarmManagement user={user} setUser={setUser} />}
                   {activeTab === 'education' && <EducationCenter />}
                   {activeTab === 'community' && <CommunityHub user={user} />}
-                  {activeTab === 'profile' && <Profile user={user} setUser={setUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />}
+                  {activeTab === 'profile' && (
+                    <Profile 
+                      user={user} 
+                      setUser={setUser} 
+                      isDarkMode={isDarkMode} 
+                      setIsDarkMode={setIsDarkMode} 
+                    />
+                  )}
                 </div>
               </main>
               
