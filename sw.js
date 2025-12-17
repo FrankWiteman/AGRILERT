@@ -1,22 +1,18 @@
-
-const CACHE_NAME = 'agrilert-netlify-v1';
+const CACHE_NAME = 'agrilert-pwa-v3';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
-  './index.tsx',
-  './App.tsx',
-  './types.ts',
-  './constants.tsx'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/index.tsx',
+  '/App.tsx',
+  '/types.ts',
+  '/constants.tsx'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Use catch to prevent one failed asset from breaking the whole install
-      return Promise.allSettled(
-        ASSETS_TO_CACHE.map(url => cache.add(url))
-      );
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
   self.skipWaiting();
@@ -31,14 +27,29 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // Handle SPA routing: for navigation requests, try the network first,
+  // then fall back to the cached index.html.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/index.html') || caches.match('/');
+      })
+    );
+    return;
+  }
+
+  // General cache-first strategy for assets
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
+      
+      return fetch(event.request).then((response) => {
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
@@ -47,9 +58,7 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, resClone);
         });
         return response;
-      })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+      });
+    })
   );
 });

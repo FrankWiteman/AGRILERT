@@ -1,9 +1,8 @@
-
 {
   "name": "AGRILERT Agri-Tech Hub",
   "short_name": "AGRILERT",
   "description": "CML-powered climate alerts and farm management.",
-  "start_url": "./index.html",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#064e3b",
   "theme_color": "#064e3b",
