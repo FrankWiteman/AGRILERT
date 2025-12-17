@@ -31,13 +31,31 @@ const VirtualSimulation: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [weatherCells, setWeatherCells] = useState<WeatherCell[]>([]);
   const [alerts, setAlerts] = useState<{id: string, msg: string}[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
+  
+  // Persistent simulation state
+  const [isRunning, setIsRunning] = useState(() => {
+    return localStorage.getItem('agrilert_sim_running') === 'true';
+  });
+  
   const [marketValue, setMarketValue] = useState(0);
   
-  const [state, setState] = useState<SimulationState>({
-    day: 1, growth: 0, moisture: 65, pests: 2, nutrients: 100,
-    cmlAttenuation: 0.15, rainfallRate: 0, isRaining: false, yieldQuality: 100, temperature: 28
+  const [state, setState] = useState<SimulationState>(() => {
+    const saved = localStorage.getItem('agrilert_sim_state');
+    return saved ? JSON.parse(saved) : {
+      day: 1, growth: 0, moisture: 65, pests: 2, nutrients: 100,
+      cmlAttenuation: 0.15, rainfallRate: 0, isRaining: false, yieldQuality: 100, temperature: 28
+    };
   });
+
+  // Sync running state
+  useEffect(() => {
+    localStorage.setItem('agrilert_sim_running', isRunning.toString());
+  }, [isRunning]);
+
+  // Sync simulation data
+  useEffect(() => {
+    localStorage.setItem('agrilert_sim_state', JSON.stringify(state));
+  }, [state]);
 
   // Get User Geolocation on mount
   useEffect(() => {
@@ -71,7 +89,6 @@ const VirtualSimulation: React.FC = () => {
         });
 
         // 2. Calculate Proximity to User Location (Center of grid 50,50)
-        // User is always at 50,50 in our virtual radar grid
         setState(prev => {
           let nearestCellDist = 100;
           let maxAttenuation = 0.1;
@@ -79,7 +96,6 @@ const VirtualSimulation: React.FC = () => {
           weatherCells.forEach(cell => {
             const dist = Math.sqrt(Math.pow(cell.x - 50, 2) + Math.pow(cell.y - 50, 2));
             if (dist < nearestCellDist) nearestCellDist = dist;
-            // High attenuation when cell is close (within 15 units)
             if (dist < 20) {
               const impact = (20 - dist) / 20 * cell.intensity;
               if (impact > maxAttenuation) maxAttenuation = impact;
@@ -88,10 +104,9 @@ const VirtualSimulation: React.FC = () => {
 
           const isRaining = maxAttenuation > 5;
           
-          // Trigger Alerts
           if (isRaining && !prev.isRaining) {
             const id = Date.now().toString();
-            setAlerts(a => [{ id, msg: `URGENT: Heavy rain detected at your GPS coordinates. CML Loss: ${maxAttenuation.toFixed(1)}dB` }, ...a]);
+            setAlerts(a => [{ id, msg: `ALERT: CML detected ${maxAttenuation.toFixed(1)}dB signal drop. Precipitation imminent.` }, ...a]);
             setTimeout(() => setAlerts(a => a.filter(x => x.id !== id)), 5000);
           }
 
@@ -118,50 +133,39 @@ const VirtualSimulation: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Location Status Bar */}
-      <div className="bg-emerald-900 p-4 rounded-3xl flex items-center justify-between text-white shadow-xl">
+      <div className="bg-emerald-900 p-4 rounded-[2rem] flex items-center justify-between text-white shadow-xl">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center animate-pulse">
             <i className="fa-solid fa-location-dot"></i>
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase text-emerald-300 tracking-widest">Active Farm Location</p>
+            <p className="text-[10px] font-black uppercase text-emerald-300 tracking-widest">Farm Anchor Point</p>
             <p className="text-sm font-bold">
-              {userLocation ? `${userLocation.lat.toFixed(4)}°N, ${userLocation.lng.toFixed(4)}°E` : 'Fetching GPS...'}
+              {userLocation ? `${userLocation.lat.toFixed(4)}°N, ${userLocation.lng.toFixed(4)}°E` : 'GPS Locking...'}
             </p>
           </div>
         </div>
-        <div className="hidden md:flex items-center gap-6 pr-4">
-           <div className="text-right">
-             <p className="text-[10px] text-emerald-300 font-bold uppercase">Signal Source</p>
-             <p className="text-xs font-mono">NODE_OYO_SOUTH_8</p>
-           </div>
-           <div className="w-px h-8 bg-emerald-800"></div>
-           <div className="flex items-center gap-2">
-             <span className="w-2 h-2 bg-green-400 rounded-full animate-ping"></span>
-             <span className="text-xs font-black uppercase">Live Link</span>
-           </div>
+        <div className="flex items-center gap-2 pr-4">
+           <span className={`w-2 h-2 rounded-full animate-ping ${isRunning ? 'bg-green-400' : 'bg-amber-400'}`}></span>
+           <span className="text-[10px] font-black uppercase tracking-widest">
+             {isRunning ? 'Simulation Running' : 'Engine Standby'}
+           </span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Geospatial Map/Radar View */}
         <div className="xl:col-span-2 relative h-[500px] bg-slate-950 rounded-[3rem] border-8 border-slate-900 shadow-2xl overflow-hidden">
-          {/* Radar Grid Lines */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-[80%] h-[80%] border border-emerald-500/20 rounded-full"></div>
             <div className="w-[50%] h-[50%] border border-emerald-500/20 rounded-full"></div>
             <div className="absolute w-full h-px bg-emerald-500/10"></div>
             <div className="absolute h-full w-px bg-emerald-500/10"></div>
           </div>
 
-          {/* User Location Beacon */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30">
              <div className="w-4 h-4 bg-emerald-400 rounded-full shadow-[0_0_20px_#10b981] animate-ping"></div>
-             <p className="text-[10px] font-black text-emerald-400 absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap">YOUR FARM</p>
           </div>
 
-          {/* Weather Cells (The Clouds) */}
           {weatherCells.map(cell => (
             <div 
               key={cell.id}
@@ -172,7 +176,6 @@ const VirtualSimulation: React.FC = () => {
             </div>
           ))}
 
-          {/* Radar Scanning Line */}
           <div className="absolute inset-0 animate-[spin_4s_linear_infinite] pointer-events-none origin-center" style={{ background: 'conic-gradient(from 0deg, transparent 0deg, rgba(16, 185, 129, 0.05) 30deg, transparent 60deg)' }}></div>
 
           <div className="absolute bottom-6 left-6 z-40 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-white/10">
@@ -181,7 +184,6 @@ const VirtualSimulation: React.FC = () => {
           </div>
         </div>
 
-        {/* Farm Bed - Perspective View */}
         <div className="xl:col-span-2 relative h-[500px] bg-emerald-950 rounded-[3rem] border-8 border-slate-900 shadow-2xl overflow-hidden flex items-end justify-center pb-12 gap-6">
           <div className={`absolute inset-0 z-20 pointer-events-none transition-opacity duration-1000 ${state.isRaining ? 'opacity-100' : 'opacity-0'}`}>
              <div className="absolute inset-0 bg-blue-500/20 backdrop-blur-[1px]"></div>
@@ -192,7 +194,6 @@ const VirtualSimulation: React.FC = () => {
             <RealisticPlant key={i} growth={state.growth} unhealthy={state.moisture < 25} delay={i * 100} />
           ))}
 
-          {/* Action Overlay */}
           <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-4 z-40">
              <button 
                onClick={() => setIsRunning(!isRunning)}
@@ -201,28 +202,17 @@ const VirtualSimulation: React.FC = () => {
                `}
              >
                <i className={`fa-solid ${isRunning ? 'fa-pause' : 'fa-play'}`}></i>
-               {isRunning ? 'PAUSE' : 'START SIM'}
+               {isRunning ? 'PAUSE ENGINE' : 'RESUME ENGINE'}
              </button>
              <button onClick={() => setState(p => ({ ...p, moisture: Math.min(100, p.moisture + 20) }))} className="p-3 bg-blue-600 text-white rounded-2xl shadow-xl hover:scale-110 transition-transform"><i className="fa-solid fa-droplet"></i></button>
           </div>
         </div>
       </div>
 
-      {/* Alerts Overlay */}
-      <div className="fixed top-24 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
-        {alerts.map(alert => (
-          <div key={alert.id} className="bg-rose-600 text-white p-4 rounded-2xl shadow-2xl border-l-8 border-rose-400 flex items-center gap-4 animate-in slide-in-from-right-10 duration-300 w-80 pointer-events-auto">
-            <i className="fa-solid fa-triangle-exclamation text-2xl"></i>
-            <p className="text-xs font-bold leading-tight">{alert.msg}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Vitals & Yield Footer */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between">
            <div>
-             <p className="text-[10px] font-black text-slate-400 uppercase">Soil Moisture</p>
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Soil Moisture</p>
              <p className="text-2xl font-black text-slate-900">{Math.floor(state.moisture)}%</p>
            </div>
            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${state.moisture > 35 ? 'bg-blue-100 text-blue-600' : 'bg-rose-100 text-rose-600'}`}>
@@ -231,7 +221,7 @@ const VirtualSimulation: React.FC = () => {
         </div>
         <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between">
            <div>
-             <p className="text-[10px] font-black text-slate-400 uppercase">Crop Growth</p>
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Crop Maturity</p>
              <p className="text-2xl font-black text-slate-900">{Math.floor(state.growth)}%</p>
            </div>
            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-xl">
@@ -240,13 +230,22 @@ const VirtualSimulation: React.FC = () => {
         </div>
         <div className="bg-emerald-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-emerald-600/20 flex items-center justify-between">
            <div>
-             <p className="text-[10px] font-black text-emerald-200 uppercase">Est. Yield Value</p>
+             <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest">Yield Potential</p>
              <p className="text-2xl font-black">₦{marketValue.toLocaleString()}</p>
            </div>
            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl">
              <i className="fa-solid fa-naira-sign"></i>
            </div>
         </div>
+      </div>
+
+      <div className="fixed top-24 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
+        {alerts.map(alert => (
+          <div key={alert.id} className="bg-rose-600 text-white p-4 rounded-2xl shadow-2xl border-l-8 border-rose-400 flex items-center gap-4 animate-in slide-in-from-right-10 duration-300 w-80 pointer-events-auto">
+            <i className="fa-solid fa-triangle-exclamation text-2xl"></i>
+            <p className="text-xs font-bold leading-tight">{alert.msg}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
